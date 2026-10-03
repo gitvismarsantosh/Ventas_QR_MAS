@@ -1,0 +1,15 @@
+{
+  "name": "Ventas QR v. 1.0.0",
+  "short_name": "Ventas QR v. 1.0.0",
+  "description": "Punto de venta con escaneo QR, reportes de venta y exportación diaria a Excel",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F7F6",
+  "theme_color": "#0F6E5B",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
