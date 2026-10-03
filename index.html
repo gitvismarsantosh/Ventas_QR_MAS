@@ -113,8 +113,7 @@ window.addEventListener('error', function(e){
   .producto-line .info{flex:1;}
   .producto-line .nombre{font-weight:600;}
   .producto-line .detalle{font-size:11px; color:var(--muted-dark);}
-  .stock-cols{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:6px; margin-top:6px; font-size:11px; color:var(--muted-dark);}
-  .stock-cols > div{min-width:0;}
+  .stock-cols{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:6px; font-size:11px; color:var(--muted-dark);}
   .stock-cols b{display:block; font-size:13px; color:var(--text-dark, inherit);}
   .stock-cols b.agotado{color:var(--danger);}
   .stock-cols .agregado{color:#1E8E3E; font-weight:700;}
@@ -1063,7 +1062,6 @@ async function codigoTieneOperaciones(codigo){
 
 async function renderCatalogo(){
   await asegurarJornada();
-  const importes = await importesVentasHoy();
   const productos = (await idbGetAll('productos')).sort((a,b)=>a.codigo.localeCompare(b.codigo));
   const unidades = await idbGetAll('unidades');
   const unidadPorCodigo = {};
@@ -1091,7 +1089,6 @@ async function renderCatalogo(){
           <div>Inicial<b>${inicial}${agregadosHtml}</b></div>
           <div>Vendido hoy<b>${vendido}</b></div>
           <div>Existencia<b class="${actual<=0?'agotado':''}">${actual}</b></div>
-          <div>Importe hoy<b>${money(importes[p.codigo]||0)}</b></div>
         </div>
       </div>
       <div style="display:flex; flex-direction:column; gap:6px;">
