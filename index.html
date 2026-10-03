@@ -90,6 +90,7 @@ window.addEventListener('error', function(e){
   .stock-cols{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:6px; font-size:11px; color:var(--muted-dark);}
   .stock-cols b{display:block; font-size:13px; color:var(--text-dark, inherit);}
   .stock-cols b.agotado{color:var(--danger);}
+  .stock-cols .agregado{color:#1E8E3E; font-weight:700;}
   .subtotal{font-weight:600; margin-left:8px;}
   .empty-state{text-align:center; color:var(--muted-dark); padding:30px 10px; font-size:13px;}
   .modal-overlay{
@@ -359,7 +360,8 @@ function idbDelete(store,key){return new Promise((res,rej)=>{const r=tx(store,'r
 
 /* ======================= EXISTENCIAS POR JORNADA ======================= */
 function r2(n){return Math.round((Number(n)||0)*100)/100;}
-function existenciaActual(p){return r2((p.existenciaInicial||0)-(p.vendidoJornada||0));}
+function totalAgregado(p){return r2((p.agregados||[]).reduce((s,a)=>s+a,0));}
+function existenciaActual(p){return r2((p.existenciaInicial||0)+totalAgregado(p)-(p.vendidoJornada||0));}
 
 // Al cambiar de día, la existencia inicial pasa a ser la existencia actual con que cerró el día anterior
 async function asegurarJornada(){
@@ -368,6 +370,7 @@ async function asegurarJornada(){
   for(const p of productos){
     if(p.fechaJornada !== hoy){
       p.existenciaInicial = Math.max(0, existenciaActual(p));
+      p.agregados = [];
       p.vendidoJornada = 0;
       p.fechaJornada = hoy;
       await idbPut('productos', p);
@@ -1036,6 +1039,7 @@ async function renderCatalogo(){
       : (p.unidadMedida || '');
     const precioTexto = p.precio!=null ? p.precio.toFixed(2) : '0.00';
     const inicial = r2(p.existenciaInicial||0);
+    const agregadosHtml = (p.agregados||[]).map(a=>` <span class="agregado">[${r2(a)}]</span>`).join('');
     const vendido = r2(p.vendidoJornada||0);
     const actual = existenciaActual(p);
     return `
@@ -1044,12 +1048,15 @@ async function renderCatalogo(){
         <div class="nombre">${escapeHtml(p.nombre)}</div>
         <div class="detalle">${escapeHtml(p.codigo)} · ${escapeHtml(unidadTexto)}&nbsp;&nbsp;$&nbsp;${precioTexto}</div>
         <div class="stock-cols">
-          <div>Inicial<b>${inicial}</b></div>
+          <div>Inicial<b>${inicial}${agregadosHtml}</b></div>
           <div>Vendido hoy<b>${vendido}</b></div>
           <div>Existencia<b class="${actual<=0?'agotado':''}">${actual}</b></div>
         </div>
       </div>
-      <button class="secondary" style="padding:6px 10px;font-size:12px" onclick="editarProductoCatalogo('${p.codigo}')">Editar</button>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button class="secondary" style="padding:6px 10px;font-size:12px" onclick="editarProductoCatalogo('${p.codigo}')">Editar</button>
+        <button class="secondary" style="padding:6px 10px;font-size:12px" onclick="agregarCantidadProducto('${p.codigo}')">Agregar</button>
+      </div>
       <button class="link-danger" onclick="eliminarProductoCatalogo('${p.codigo}')">✕</button>
     </div>`;
   }).join('');
@@ -1084,6 +1091,36 @@ window.editarProductoCatalogo = async function(codigo){
     if(isNaN(precio) || precio<0){ toast('Precio inválido.', 'error'); return; }
     if(isNaN(existenciaInicial) || existenciaInicial<0){ toast('La existencia inicial es obligatoria.', 'error'); return; }
     await idbPut('productos', { ...prod, precio, existenciaInicial });
+    overlay.remove();
+    renderCatalogo();
+  };
+};
+
+window.agregarCantidadProducto = async function(codigo){
+  await asegurarJornada();
+  const prod = await idbGet('productos', codigo);
+  if(!prod) return;
+  const overlay = document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.innerHTML = `<div class="modal modal-light">
+    <h3>Agregar cantidad</h3>
+    <p style="color:var(--muted-dark);font-size:13px;margin-top:-8px">${escapeHtml(prod.nombre)}</p>
+    <div class="field"><label>Cantidad a agregar</label><input type="number" id="inCantAgregar" step="0.01" min="0.01" inputmode="decimal"></div>
+    <div class="row">
+      <button class="secondary" id="btnCancelarAgr">Cancelar</button>
+      <button class="primary" id="btnGuardarAgr">Agregar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const input = document.getElementById('inCantAgregar');
+  input.focus();
+  document.getElementById('btnCancelarAgr').onclick = ()=>overlay.remove();
+  document.getElementById('btnGuardarAgr').onclick = async ()=>{
+    const cantidad = parseFloat(input.value);
+    if(isNaN(cantidad) || cantidad<=0){ toast('Cantidad inválida.', 'error'); return; }
+    const actual = await idbGet('productos', codigo);
+    actual.agregados = (actual.agregados||[]).concat([r2(cantidad)]);
+    await idbPut('productos', actual);
     overlay.remove();
     renderCatalogo();
   };
@@ -1182,7 +1219,7 @@ document.getElementById('btnAgregarProducto').onclick = async ()=>{
     if(isNaN(existenciaInicial) || existenciaInicial<0){ toast('La cantidad (existencia inicial) es obligatoria.', 'error'); return; }
     const existente = await idbGet('productos', codigo);
     if(existente){ toast('Ya existe un producto con ese código.', 'error'); return; }
-    await idbAdd('productos', { codigo, nombre, unidadCodigo, precio, existenciaInicial, vendidoJornada:0, fechaJornada:todayStr() });
+    await idbAdd('productos', { codigo, nombre, unidadCodigo, precio, existenciaInicial, agregados:[], vendidoJornada:0, fechaJornada:todayStr() });
     overlay.remove();
     renderCatalogo();
   };
