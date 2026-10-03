@@ -67,6 +67,20 @@ window.addEventListener('error', function(e){
     background:var(--primary-dark); color:var(--text); border:1px solid var(--border);
     border-radius:0; padding:10px 14px; font-size:14px; cursor:pointer;
   }
+  .ajustes-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px;}
+  .ajuste-icono{
+    background:var(--surface); border:1px solid var(--border-light); border-radius:0;
+    padding:18px 8px; display:flex; flex-direction:column; align-items:center; gap:8px;
+    color:var(--text-dark); font-size:13px; font-weight:600; text-align:center; cursor:pointer;
+  }
+  .ajuste-icono .ico{font-size:32px; line-height:1; height:40px; display:flex; align-items:center;}
+  .btn-volver{margin-bottom:12px;}
+  #ajusteDatos label{color:var(--muted-dark);}
+  .btn-pdf{background:none; border:none; padding:4px; cursor:pointer; flex-shrink:0; line-height:0;}
+  .ipb-tabla{border-collapse:collapse; font-size:12px; color:var(--text-dark); white-space:nowrap; min-width:100%;}
+  .ipb-tabla th{background:var(--border-light); text-align:left; font-weight:600; padding:6px 8px; font-size:11px;}
+  .ipb-tabla td{padding:6px 8px; border-bottom:1px solid var(--border-light);}
+  .ipb-tabla .num{text-align:right;}
   button.danger{
     background:var(--primary-dark); color:var(--text); font-weight:700; border:1px solid var(--danger);
     border-radius:0; padding:8px 12px; font-size:13px; cursor:pointer;
@@ -299,6 +313,27 @@ window.addEventListener('error', function(e){
 
   <!-- PESTAÑA 4: AJUSTES -->
   <section id="tab4" class="tab-content">
+    <div id="ajustesPanel">
+      <div class="ajustes-grid">
+        <button class="ajuste-icono" data-ajuste="Datos"><span class="ico">🏢</span>Datos generales</button>
+        <button class="ajuste-icono" data-ajuste="Productos"><span class="ico">📦</span>Catálogo de productos</button>
+        <button class="ajuste-icono" data-ajuste="Unidades"><span class="ico">📏</span>Catálogo de unidades de medida</button>
+        <button class="ajuste-icono" data-ajuste="IPB"><span class="ico"><svg viewBox="0 0 40 48" width="34" height="40" aria-hidden="true"><path d="M6 2h20l10 10v32a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fff" stroke="#C0392B" stroke-width="2"/><path d="M26 2v10h10" fill="#F6D5D1" stroke="#C0392B" stroke-width="2"/><rect x="4" y="24" width="32" height="14" fill="#C0392B"/><text x="20" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#fff">PDF</text></svg></span>Generar IPB</button>
+      </div>
+    </div>
+    <div id="ajusteDatos" class="ajuste-vista" style="display:none">
+      <button class="secondary btn-volver" data-volver>← Ajustes</button>
+      <div class="card">
+        <h2>Datos generales</h2>
+        <div class="field"><label>Nombre del negocio</label><input type="text" id="dgNegocio"></div>
+        <div class="field"><label>Teléfono</label><input type="text" id="dgTelefono" inputmode="tel"></div>
+        <div class="field"><label>Dirección</label><input type="text" id="dgDireccion"></div>
+        <div class="field"><label>Nombre del vendedor</label><input type="text" id="dgVendedor"></div>
+        <button class="primary" id="btnGuardarDatos">Guardar</button>
+      </div>
+    </div>
+    <div id="ajusteProductos" class="ajuste-vista" style="display:none">
+      <button class="secondary btn-volver" data-volver>← Ajustes</button>
     <div class="card">
       <h2>Catálogo de productos</h2>
       <button class="primary" id="btnAgregarProducto" style="margin-bottom:12px">+ Agregar producto</button>
@@ -308,8 +343,10 @@ window.addEventListener('error', function(e){
       </div>
       <input type="file" id="inputImportarProductos" accept=".csv" style="display:none">
       <div id="listaCatalogo"><div class="empty-state">Aún no hay productos en el catálogo.</div></div>
-      <button class="primary" id="btnIPB" style="margin-top:12px">IPB</button>
     </div>
+    </div>
+    <div id="ajusteUnidades" class="ajuste-vista" style="display:none">
+      <button class="secondary btn-volver" data-volver>← Ajustes</button>
     <div class="card">
       <h2>Catálogo de unidades de medida</h2>
       <button class="primary" id="btnAgregarUnidad" style="margin-bottom:12px">+ Agregar unidad</button>
@@ -320,7 +357,21 @@ window.addEventListener('error', function(e){
       <input type="file" id="inputImportarUnidades" accept=".csv" style="display:none">
       <div id="listaUnidades"><div class="empty-state">Aún no hay unidades registradas.</div></div>
     </div>
-    <div class="card">
+    </div>
+    <div id="ajusteIPB" class="ajuste-vista" style="display:none">
+      <button class="secondary btn-volver" data-volver>← Ajustes</button>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div>
+            <div id="ipbTitulo" style="font-size:15px; font-weight:700; color:var(--text-dark);"></div>
+            <div id="ipbSubtitulo" style="font-size:12px; color:var(--muted-dark);"></div>
+          </div>
+          <button class="btn-pdf" id="btnIPB" aria-label="Generar PDF" title="Generar PDF"><svg viewBox="0 0 40 48" width="34" height="40" aria-hidden="true"><path d="M6 2h20l10 10v32a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fff" stroke="#C0392B" stroke-width="2"/><path d="M26 2v10h10" fill="#F6D5D1" stroke="#C0392B" stroke-width="2"/><rect x="4" y="24" width="32" height="14" fill="#C0392B"/><text x="20" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#fff">PDF</text></svg></button>
+        </div>
+        <div style="overflow-x:auto; margin-top:12px;"><table class="ipb-tabla" id="ipbTabla"></table></div>
+      </div>
+    </div>
+    <div class="card" id="ajusteDiagnostico">
       <h2>Diagnóstico offline</h2>
       <button class="secondary" id="btnDiagnostico" style="margin-bottom:12px">Verificar estado offline</button>
       <pre id="resultadoDiagnostico" style="white-space:pre-wrap; font-size:11px; color:var(--muted-dark); margin:0;">Toca el botón para revisar.</pre>
@@ -1324,10 +1375,11 @@ function pdfEnsamblar(paginas){
   for(let i=0;i<pdf.length;i++) bytes[i] = pdf.charCodeAt(i) & 255;
   return bytes;
 }
+const IPB_CABECERAS = ['Código','Producto','U/M','Precio','Inicial','Vendido hoy','Existencia','Importe hoy'];
 function construirPdfEstadoOperaciones({titulo, negocio, fecha, filas}){
   const PH = 595, ML = 36, RH = 18, MARGEN_INF = 40;
   const anchos = [70,200,45,60,150,70,85,90];
-  const cabeceras = ['Código','Producto','U/M','Precio','Inicial','Vendido hoy','Existencia','Importe hoy'];
+  const cabeceras = IPB_CABECERAS;
   const alinea = ['l','l','l','r','r','r','r','r'];
   const paginas = [];
   let c = '', rowTop = 0;
@@ -1372,10 +1424,9 @@ function construirPdfEstadoOperaciones({titulo, negocio, fecha, filas}){
   return pdfEnsamblar(paginas);
 }
 
-document.getElementById('btnIPB').onclick = async ()=>{
+async function datosIPB(){
   await asegurarJornada();
   const productos = (await idbGetAll('productos')).sort((a,b)=>a.codigo.localeCompare(b.codigo));
-  if(productos.length===0){ toast('No hay productos en el catálogo.', 'warning'); return; }
   const unidades = await idbGetAll('unidades');
   const unidadPorCodigo = {}; unidades.forEach(u=>unidadPorCodigo[u.codigo]=u);
   const importes = await importesVentasHoy();
@@ -1389,15 +1440,85 @@ document.getElementById('btnIPB').onclick = async ()=>{
       inicial, String(r2(p.vendidoJornada||0)), String(existenciaActual(p)), money(importes[p.codigo]||0)
     ];
   });
-  const negocio = document.querySelector('.negocio-nombre')?.textContent.trim() || '';
+  const negocio = (await obtenerDatosGenerales()).negocio;
   const fecha = new Date().toLocaleDateString('es',{day:'numeric',month:'long',year:'numeric'});
-  const bytes = construirPdfEstadoOperaciones({titulo:'Estado de operaciones del día', negocio, fecha, filas});
+  return {titulo:'Estado de operaciones del día', negocio, fecha, filas};
+}
+
+async function renderIPB(){
+  const d = await datosIPB();
+  document.getElementById('ipbTitulo').textContent = d.titulo;
+  document.getElementById('ipbSubtitulo').textContent = d.negocio ? d.negocio+'   |   '+d.fecha : d.fecha;
+  const tabla = document.getElementById('ipbTabla');
+  if(d.filas.length===0){
+    tabla.innerHTML = '<tr><td>No hay productos en el catálogo.</td></tr>';
+    return;
+  }
+  tabla.innerHTML = '<thead><tr>' + IPB_CABECERAS.map((h,i)=>`<th class="${i>=3?'num':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>'
+    + d.filas.map(f=>'<tr>'+f.map((v,i)=>`<td class="${i>=3?'num':''}">${escapeHtml(v)}</td>`).join('')+'</tr>').join('')
+    + '</tbody>';
+}
+
+document.getElementById('btnIPB').onclick = async ()=>{
+  const d = await datosIPB();
+  if(d.filas.length===0){ toast('No hay productos en el catálogo.', 'warning'); return; }
+  const bytes = construirPdfEstadoOperaciones(d);
   const blob = new Blob([bytes], {type:'application/pdf'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'Estado de operaciones del dia.pdf';
   a.click();
 };
+
+/* ======================= PANEL DE AJUSTES ======================= */
+const DATOS_GENERALES_DEF = {negocio:'TCP La Gloria de Dios', telefono:'', direccion:'', vendedor:''};
+async function obtenerDatosGenerales(){
+  const cfg = await idbGet('config','datosGenerales');
+  return Object.assign({}, DATOS_GENERALES_DEF, cfg && cfg.valor ? cfg.valor : {});
+}
+async function aplicarNombreNegocio(){
+  const d = await obtenerDatosGenerales();
+  const el = document.querySelector('.negocio-nombre');
+  if(el) el.textContent = d.negocio;
+}
+async function cargarFormDatosGenerales(){
+  const d = await obtenerDatosGenerales();
+  document.getElementById('dgNegocio').value = d.negocio;
+  document.getElementById('dgTelefono').value = d.telefono;
+  document.getElementById('dgDireccion').value = d.direccion;
+  document.getElementById('dgVendedor').value = d.vendedor;
+}
+document.getElementById('btnGuardarDatos').onclick = async ()=>{
+  const negocio = document.getElementById('dgNegocio').value.trim();
+  if(!negocio){ toast('El nombre del negocio es obligatorio.', 'error'); return; }
+  await idbPut('config', {clave:'datosGenerales', valor:{
+    negocio,
+    telefono: document.getElementById('dgTelefono').value.trim(),
+    direccion: document.getElementById('dgDireccion').value.trim(),
+    vendedor: document.getElementById('dgVendedor').value.trim()
+  }});
+  await aplicarNombreNegocio();
+  toast('Datos guardados.');
+};
+
+function mostrarPanelAjustes(){
+  document.querySelectorAll('.ajuste-vista').forEach(v=>v.style.display='none');
+  document.getElementById('ajustesPanel').style.display = 'block';
+  document.getElementById('ajusteDiagnostico').style.display = '';
+}
+async function abrirAjuste(nombre){
+  document.getElementById('ajustesPanel').style.display = 'none';
+  document.getElementById('ajusteDiagnostico').style.display = 'none';
+  document.querySelectorAll('.ajuste-vista').forEach(v=>v.style.display='none');
+  document.getElementById('ajuste'+nombre).style.display = 'block';
+  document.querySelector('main').scrollTop = 0;
+  if(nombre==='Datos') await cargarFormDatosGenerales();
+  if(nombre==='Productos') await renderCatalogo();
+  if(nombre==='Unidades') await renderUnidades();
+  if(nombre==='IPB') await renderIPB();
+}
+document.querySelectorAll('.ajuste-icono').forEach(b=>{ b.onclick = ()=>abrirAjuste(b.dataset.ajuste); });
+document.querySelectorAll('[data-volver]').forEach(b=>{ b.onclick = mostrarPanelAjustes; });
 
 async function renderUnidades(){
   const unidades = (await idbGetAll('unidades')).sort((a,b)=>a.codigo.localeCompare(b.codigo));
@@ -1771,7 +1892,7 @@ document.querySelectorAll('nav.tabbar button').forEach(btn=>{
     if(n==='1') await renderTab1();
     if(n==='2') await renderListaVentas();
     if(n==='3') await renderTab3();
-    if(n==='4'){ await renderCatalogo(); await renderUnidades(); }
+    if(n==='4'){ mostrarPanelAjustes(); await renderCatalogo(); await renderUnidades(); }
     if(n==='5') await renderAsesor();
   };
 });
@@ -1779,6 +1900,7 @@ document.querySelectorAll('nav.tabbar button').forEach(btn=>{
 /* ======================= INICIO ======================= */
 (async function init(){
   await openDB();
+  await aplicarNombreNegocio();
   await sembrarCatalogosIniciales();
   await reiniciarCatalogoProductosUnaVez();
   await asegurarJornada();
