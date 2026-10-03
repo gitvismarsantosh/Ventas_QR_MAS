@@ -71,6 +71,32 @@ window.addEventListener('error', function(e){
     background:var(--primary-dark); color:var(--text); font-weight:700; border:1px solid var(--danger);
     border-radius:0; padding:8px 12px; font-size:13px; cursor:pointer;
   }
+  /* Botón premium POS */
+  button.btn-premium{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    min-height:52px; padding:12px 18px; font-family:inherit; font-size:15px; font-weight:600;
+    letter-spacing:.2px; color:#F6F1E4; cursor:pointer;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 45%),
+      linear-gradient(180deg, #1B2432 0%, #111826 100%);
+    border:1px solid rgba(201,169,110,.38); border-radius:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 4px 10px rgba(5,10,20,.32);
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  }
+  button.btn-premium.principal{
+    min-height:58px; font-size:16px; border-color:rgba(214,184,126,.65);
+    box-shadow:inset 0 1px 0 rgba(226,200,146,.32), 0 6px 14px rgba(5,10,20,.38);
+  }
+  .row > button.btn-premium.principal{flex:1.5;}
+  button.btn-premium:active:not(:disabled){
+    transform:translateY(1px); filter:brightness(1.15);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 2px 5px rgba(5,10,20,.3);
+  }
+  @media (hover:hover) and (pointer:fine){
+    button.btn-premium:hover:not(:disabled){filter:brightness(1.08);}
+  }
+  button.btn-premium:focus-visible{outline:2px solid rgba(226,200,146,.8); outline-offset:2px;}
+  button.btn-premium:disabled{opacity:.5; cursor:not-allowed; box-shadow:none; filter:none; transform:none;}
   button.link-danger{background:none;border:none;color:var(--text-dark);font-weight:700;font-size:13px;cursor:pointer;padding:4px 8px;}
   .row{display:flex; gap:10px;}
   .row > *{flex:1;}
@@ -87,7 +113,8 @@ window.addEventListener('error', function(e){
   .producto-line .info{flex:1;}
   .producto-line .nombre{font-weight:600;}
   .producto-line .detalle{font-size:11px; color:var(--muted-dark);}
-  .stock-cols{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:6px; font-size:11px; color:var(--muted-dark);}
+  .stock-cols{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:6px; margin-top:6px; font-size:11px; color:var(--muted-dark);}
+  .stock-cols > div{min-width:0;}
   .stock-cols b{display:block; font-size:13px; color:var(--text-dark, inherit);}
   .stock-cols b.agotado{color:var(--danger);}
   .stock-cols .agregado{color:#1E8E3E; font-weight:700;}
@@ -174,8 +201,8 @@ window.addEventListener('error', function(e){
     </div>
     <div class="card">
       <h2>Fin de jornada</h2>
-      <div class="row">
-        <button class="secondary" id="btnExportar">Exportar día (Excel)</button>
+      <div class="row" style="align-items:center;">
+        <button class="btn-premium principal" id="btnExportar">Exportar día (Excel)</button>
         <button class="danger" id="btnBorrarDatos">Borrar datos del día</button>
       </div>
     </div>
@@ -282,6 +309,7 @@ window.addEventListener('error', function(e){
       </div>
       <input type="file" id="inputImportarProductos" accept=".csv" style="display:none">
       <div id="listaCatalogo"><div class="empty-state">Aún no hay productos en el catálogo.</div></div>
+      <button class="primary" id="btnIPB" style="margin-top:12px">IPB</button>
     </div>
     <div class="card">
       <h2>Catálogo de unidades de medida</h2>
@@ -400,6 +428,17 @@ async function validarExistencia(codigo, nombre, cantidad){
     return false;
   }
   return true;
+}
+
+// Importe total vendido hoy por producto (suma de subtotales de los reportes cerrados del día)
+async function importesVentasHoy(){
+  const hoy = todayStr();
+  const todos = await idbGetAll('reportes');
+  const imp = {};
+  todos.filter(r=>r.fecha===hoy && r.estado==='cerrado').forEach(r=>{
+    r.productos.forEach(l=>{ imp[l.codigo] = r2((imp[l.codigo]||0) + l.subtotal); });
+  });
+  return imp;
 }
 
 // Se ejecuta al tocar "Fin de venta": suma lo vendido de cada producto en la jornada
@@ -1024,6 +1063,7 @@ async function codigoTieneOperaciones(codigo){
 
 async function renderCatalogo(){
   await asegurarJornada();
+  const importes = await importesVentasHoy();
   const productos = (await idbGetAll('productos')).sort((a,b)=>a.codigo.localeCompare(b.codigo));
   const unidades = await idbGetAll('unidades');
   const unidadPorCodigo = {};
@@ -1051,6 +1091,7 @@ async function renderCatalogo(){
           <div>Inicial<b>${inicial}${agregadosHtml}</b></div>
           <div>Vendido hoy<b>${vendido}</b></div>
           <div>Existencia<b class="${actual<=0?'agotado':''}">${actual}</b></div>
+          <div>Importe hoy<b>${money(importes[p.codigo]||0)}</b></div>
         </div>
       </div>
       <div style="display:flex; flex-direction:column; gap:6px;">
@@ -1223,6 +1264,142 @@ document.getElementById('btnAgregarProducto').onclick = async ()=>{
     overlay.remove();
     renderCatalogo();
   };
+};
+
+/* ======================= REPORTE PDF (IPB) ======================= */
+// Generador mínimo de PDF (sin librerías, funciona offline): Helvetica, A4 horizontal
+const PDF_ANCHOS = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+  556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,
+  667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,
+  278,278,278,469,556,333,
+  556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,
+  334,260,334,584];
+function pdfAnchoChar(ch){
+  let c = ch.charCodeAt(0);
+  if(c>=32 && c<=126) return PDF_ANCHOS[c-32];
+  const base = ch.normalize('NFD').charCodeAt(0);
+  if(base>=32 && base<=126) return PDF_ANCHOS[base-32];
+  return 556;
+}
+function pdfAncho(str,size,bold){
+  let w = 0;
+  for(const ch of String(str)) w += pdfAnchoChar(ch);
+  return w/1000*size*(bold?1.07:1);
+}
+function pdfTexto(str){
+  let out = '';
+  for(const ch of String(str)){
+    let c = ch.charCodeAt(0);
+    if(c<32 || c>255) c = (ch==='\u2013' || ch==='\u2014') ? 45 : 63;
+    if(c===40 || c===41 || c===92) out += '\\' + String.fromCharCode(c);
+    else out += String.fromCharCode(c);
+  }
+  return out;
+}
+function pdfAjustar(str,maxW,size,bold){
+  str = String(str);
+  if(pdfAncho(str,size,bold) <= maxW) return str;
+  while(str.length>1 && pdfAncho(str+'...',size,bold) > maxW) str = str.slice(0,-1);
+  return str+'...';
+}
+function pdfT(x,y,str,size,bold,align,w){
+  const px = align==='r' ? x+w-pdfAncho(str,size,bold) : x;
+  return `BT /${bold?'F2':'F1'} ${size} Tf ${px.toFixed(2)} ${y.toFixed(2)} Td (${pdfTexto(str)}) Tj ET\n`;
+}
+function pdfEnsamblar(paginas){
+  const objs = [];
+  objs[0] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[1] = `<< /Type /Pages /Kids [${paginas.map((_,i)=>(5+2*i)+' 0 R').join(' ')}] /Count ${paginas.length} >>`;
+  objs[2] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  paginas.forEach((c,i)=>{
+    objs[4+2*i] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6+2*i} 0 R >>`;
+    objs[5+2*i] = `<< /Length ${c.length} >>\nstream\n${c}\nendstream`;
+  });
+  let pdf = '%PDF-1.4\n';
+  const offs = [];
+  objs.forEach((o,i)=>{ offs.push(pdf.length); pdf += `${i+1} 0 obj\n${o}\nendobj\n`; });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+  offs.forEach(o=>{ pdf += String(o).padStart(10,'0')+' 00000 n \n'; });
+  pdf += `trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const bytes = new Uint8Array(pdf.length);
+  for(let i=0;i<pdf.length;i++) bytes[i] = pdf.charCodeAt(i) & 255;
+  return bytes;
+}
+function construirPdfEstadoOperaciones({titulo, negocio, fecha, filas}){
+  const PH = 595, ML = 36, RH = 18, MARGEN_INF = 40;
+  const anchos = [70,200,45,60,150,70,85,90];
+  const cabeceras = ['Código','Producto','U/M','Precio','Inicial','Vendido hoy','Existencia','Importe hoy'];
+  const alinea = ['l','l','l','r','r','r','r','r'];
+  const paginas = [];
+  let c = '', rowTop = 0;
+
+  function cabeceraTabla(){
+    c += '0.90 g\n'+ML+' '+(rowTop-RH)+' '+anchos.reduce((a,b)=>a+b,0)+' '+RH+' re f\n0 g\n';
+    let x = ML;
+    cabeceras.forEach((h,i)=>{ c += pdfT(x+4, rowTop-RH+5.5, h, 8.5, true, alinea[i], anchos[i]-8); x += anchos[i]; });
+    rowTop -= RH;
+  }
+  function nuevaPagina(primera){
+    if(c) paginas.push(c);
+    c = '';
+    if(primera){
+      c += '0 g\n' + pdfT(ML, PH-48, titulo, 16, true);
+      c += pdfT(ML, PH-68, negocio ? negocio+'   |   '+fecha : fecha, 11, false);
+      rowTop = PH-90;
+    } else {
+      rowTop = PH-40;
+    }
+    cabeceraTabla();
+  }
+  nuevaPagina(true);
+  filas.forEach(f=>{
+    if(rowTop-RH < MARGEN_INF) nuevaPagina(false);
+    let x = ML;
+    f.forEach((v,i)=>{
+      const txt = pdfAjustar(v, anchos[i]-8, 9, false);
+      c += '0 g\n' + pdfT(x+4, rowTop-RH+5.5, txt, 9, false, alinea[i], anchos[i]-8);
+      x += anchos[i];
+    });
+    c += '0.80 G\n0.5 w\n'+ML+' '+(rowTop-RH)+' m '+(ML+anchos.reduce((a,b)=>a+b,0))+' '+(rowTop-RH)+' l S\n';
+    rowTop -= RH;
+  });
+  paginas.push(c);
+  // Pie con numeración
+  const n = paginas.length;
+  for(let i=0;i<n;i++){
+    const pie = 'Página '+(i+1)+' de '+n;
+    paginas[i] += '0.4 g\n' + pdfT(421-pdfAncho(pie,8,false)/2, 20, pie, 8, false);
+  }
+  return pdfEnsamblar(paginas);
+}
+
+document.getElementById('btnIPB').onclick = async ()=>{
+  await asegurarJornada();
+  const productos = (await idbGetAll('productos')).sort((a,b)=>a.codigo.localeCompare(b.codigo));
+  if(productos.length===0){ toast('No hay productos en el catálogo.', 'warning'); return; }
+  const unidades = await idbGetAll('unidades');
+  const unidadPorCodigo = {}; unidades.forEach(u=>unidadPorCodigo[u.codigo]=u);
+  const importes = await importesVentasHoy();
+  const filas = productos.map(p=>{
+    const unidadTexto = p.unidadCodigo && unidadPorCodigo[p.unidadCodigo]
+      ? unidadPorCodigo[p.unidadCodigo].abreviatura
+      : (p.unidadMedida || '');
+    const inicial = String(r2(p.existenciaInicial||0)) + (p.agregados||[]).map(a=>' ['+r2(a)+']').join('');
+    return [
+      p.codigo, p.nombre, unidadTexto, p.precio!=null ? money(p.precio) : money(0),
+      inicial, String(r2(p.vendidoJornada||0)), String(existenciaActual(p)), money(importes[p.codigo]||0)
+    ];
+  });
+  const negocio = document.querySelector('.negocio-nombre')?.textContent.trim() || '';
+  const fecha = new Date().toLocaleDateString('es',{day:'numeric',month:'long',year:'numeric'});
+  const bytes = construirPdfEstadoOperaciones({titulo:'Estado de operaciones del día', negocio, fecha, filas});
+  const blob = new Blob([bytes], {type:'application/pdf'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Estado de operaciones del dia.pdf';
+  a.click();
 };
 
 async function renderUnidades(){
